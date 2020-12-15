@@ -1,0 +1,37 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: cephfs-pvc
+spec:
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 20Gi
+  storageClassName: rook-cephfs
+
+---
+
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: filesystem-benchmark
+spec:
+  backoffLimit: 1
+  template:
+    spec:
+      restartPolicy: Never 
+      containers:
+      - name: filesystem-benchmark
+        image: quay.io/igou/benchmarking-container:latest
+        command: ["/usr/bin/iozone"] 
+        args: ["-a", "-f", "/mnt/volume/iozone-test","-e","-I","-r","4k","-i","0","-i","1","-i","2"]
+#        args: ["-e","-I","-a","-s","100M","-r","4k","-i","0","-i","1","-i","2","-f","/mnt/volume/iozone-random"]
+        volumeMounts:
+        - name: test-volume
+          mountPath: /mnt/volume
+      volumes:
+      - name: test-volume
+        persistentVolumeClaim:
+          claimName: cephfs-pvc
+          readOnly: false
